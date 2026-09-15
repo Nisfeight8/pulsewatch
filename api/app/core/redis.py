@@ -8,4 +8,8 @@ from app.core.config import get_settings
 @lru_cache
 def get_redis_client() -> redis.Redis:
     settings = get_settings()
-    return redis.from_url(settings.redis_url, decode_responses=True)
+    return redis.from_url(
+        settings.redis_url,
+        decode_responses=True,
+        socket_timeout=10,  # must exceed the longest `block=` used by XREADGROUP
+    )
