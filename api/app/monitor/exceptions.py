@@ -1,0 +1,2 @@
+class MonitorNotFoundError(Exception):
+    pass
