@@ -28,13 +28,20 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-  
+
   mailpit:
     image: axllent/mailpit:latest
     restart: unless-stopped
     ports:
-      - "8025:8025"   # web UI — βλέπεις τα emails που "στάλθηκαν"
+      - "8025:8025" # web UI — βλέπεις τα emails που "στάλθηκαν"
       - "1025:1025"
+
+  celery_worker:
+    build: ./api
+    command: celery -A app.core.celery_app worker --loglevel=info
+    depends_on:
+      redis:
+        condition: service_healthy
 
 volumes:
   pulsewatch_db_data:
