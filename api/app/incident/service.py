@@ -5,21 +5,32 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.incident.models import Incident
+from app.incident.schemas import IncidentFilters
 from app.incident.tasks import send_downtime_email, send_recovery_email
 from app.monitor.models import Monitor, MonitorStatus
+from app.shared.pagination import PaginationParams, paginate_query
 
 
 class IncidentService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def list_incidents(self, monitor_id: uuid.UUID) -> list[Incident]:
-        result = await self.db.execute(
-            select(Incident)
-            .where(Incident.monitor_id == monitor_id)
-            .order_by(Incident.started_at.desc())
-        )
-        return list(result.scalars().all())
+    async def list_incidents(
+        self, monitor_id: uuid.UUID, pagination: PaginationParams, filters: IncidentFilters
+    ) -> tuple[list[Incident], int]:
+        query = select(Incident).where(Incident.monitor_id == monitor_id)
+
+        if filters.resolved is True:
+            query = query.where(Incident.resolved_at.is_not(None))
+        elif filters.resolved is False:
+            query = query.where(Incident.resolved_at.is_(None))
+
+        if filters.started_after is not None:
+            query = query.where(Incident.started_at >= filters.started_after)
+        if filters.started_before is not None:
+            query = query.where(Incident.started_at <= filters.started_before)
+
+        return await paginate_query(query, Incident, self.db, pagination, default_sort="started_at")
 
     # --- Internal methods, called only by the consumer process ---
 

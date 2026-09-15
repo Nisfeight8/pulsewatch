@@ -5,7 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.monitor.exceptions import MonitorNotFoundError
 from app.monitor.models import Monitor
-from app.monitor.schemas import MonitorCreate, MonitorUpdate
+from app.monitor.schemas import MonitorCreate, MonitorFilters, MonitorUpdate
+from app.shared.pagination import PaginationParams, paginate_query
 
 
 class MonitorService:
@@ -24,9 +25,19 @@ class MonitorService:
         await self.db.refresh(monitor)
         return monitor
 
-    async def list_monitors(self, owner_id: uuid.UUID) -> list[Monitor]:
-        result = await self.db.execute(select(Monitor).where(Monitor.owner_id == owner_id))
-        return list(result.scalars().all())
+    async def list_monitors(
+        self, owner_id: uuid.UUID, pagination: PaginationParams, filters: MonitorFilters
+    ) -> tuple[list[Monitor], int]:
+        query = select(Monitor).where(Monitor.owner_id == owner_id)
+
+        if filters.is_active is not None:
+            query = query.where(Monitor.is_active == filters.is_active)
+        if filters.status is not None:
+            query = query.where(Monitor.last_status == filters.status)
+        if filters.search:
+            query = query.where(Monitor.name.ilike(f"%{filters.search}%"))
+
+        return await paginate_query(query, Monitor, self.db, pagination)
 
     async def get_monitor(self, owner_id: uuid.UUID, monitor_id: uuid.UUID) -> Monitor:
         result = await self.db.execute(

@@ -7,8 +7,9 @@ from app.auth.models import User
 from app.monitor.deps import get_monitor_service
 from app.monitor.exceptions import MonitorNotFoundError
 from app.monitor.models import Monitor
-from app.monitor.schemas import MonitorCreate, MonitorRead, MonitorUpdate
+from app.monitor.schemas import MonitorCreate, MonitorFilters, MonitorRead, MonitorUpdate
 from app.monitor.service import MonitorService
+from app.shared.pagination import PaginatedResponse, PaginationParams, build_paginated_response
 
 router = APIRouter(prefix="/monitors", tags=["monitors"])
 
@@ -22,12 +23,15 @@ async def create_monitor(
     return await monitor_service.create_monitor(current_user.id, monitor_in)
 
 
-@router.get("", response_model=list[MonitorRead])
+@router.get("", response_model=PaginatedResponse[MonitorRead])
 async def list_monitors(
+    pagination: PaginationParams = Depends(),
+    filters: MonitorFilters = Depends(),
     current_user: User = Depends(get_current_user),
     monitor_service: MonitorService = Depends(get_monitor_service),
-) -> list[Monitor]:
-    return await monitor_service.list_monitors(current_user.id)
+) -> PaginatedResponse[MonitorRead]:
+    items, total = await monitor_service.list_monitors(current_user.id, pagination, filters)
+    return build_paginated_response(pagination, total, items)
 
 
 @router.get("/{monitor_id}", response_model=MonitorRead)

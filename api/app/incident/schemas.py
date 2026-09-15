@@ -12,3 +12,9 @@ class IncidentRead(BaseModel):
     started_at: datetime
     resolved_at: datetime | None
     response_time_ms: int | None
+
+
+class IncidentFilters(BaseModel):
+    resolved: bool | None = None
+    started_after: datetime | None = None
+    started_before: datetime | None = None

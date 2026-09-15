@@ -30,3 +30,9 @@ class MonitorRead(BaseModel):
     last_status: MonitorStatus
     last_checked_at: datetime | None
     created_at: datetime
+
+
+class MonitorFilters(BaseModel):
+    is_active: bool | None = None
+    status: MonitorStatus | None = None
+    search: str | None = None
