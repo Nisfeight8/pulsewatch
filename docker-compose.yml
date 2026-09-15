@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pulsewatch
+      POSTGRES_PASSWORD: pulsewatch
+      POSTGRES_DB: pulsewatch
+    ports:
+      - "5432:5432" # exposed for local psql/DBeaver access
+    volumes:
+      - pulsewatch_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pulsewatch"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379" # exposed so you can redis-cli in locally too
+    volumes:
+      - pulsewatch_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "8025:8025"   # web UI — βλέπεις τα emails που "στάλθηκαν"
+      - "1025:1025"
+
+volumes:
+  pulsewatch_db_data:
+  pulsewatch_redis_data:
