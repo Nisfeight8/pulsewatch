@@ -1,10 +1,12 @@
 import uuid
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.redis import get_redis_client, publish_monitor_event
 from app.monitor.exceptions import MonitorNotFoundError
-from app.monitor.models import Monitor
+from app.monitor.models import Monitor, MonitorStatus
 from app.monitor.schemas import MonitorCreate, MonitorFilters, MonitorUpdate
 from app.shared.pagination import PaginationParams, paginate_query
 
@@ -12,18 +14,6 @@ from app.shared.pagination import PaginationParams, paginate_query
 class MonitorService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
-
-    async def create_monitor(self, owner_id: uuid.UUID, monitor_in: MonitorCreate) -> Monitor:
-        monitor = Monitor(
-            owner_id=owner_id,
-            name=monitor_in.name,
-            url=str(monitor_in.url),
-            interval_seconds=monitor_in.interval_seconds,
-        )
-        self.db.add(monitor)
-        await self.db.commit()
-        await self.db.refresh(monitor)
-        return monitor
 
     async def list_monitors(
         self, owner_id: uuid.UUID, pagination: PaginationParams, filters: MonitorFilters
@@ -48,6 +38,20 @@ class MonitorService:
             raise MonitorNotFoundError
         return monitor
 
+    async def create_monitor(self, owner_id: uuid.UUID, monitor_in: MonitorCreate) -> Monitor:
+        monitor = Monitor(
+            owner_id=owner_id,
+            name=monitor_in.name,
+            url=str(monitor_in.url),
+            interval_seconds=monitor_in.interval_seconds,
+        )
+        self.db.add(monitor)
+        await self.db.commit()
+        await self.db.refresh(monitor)
+
+        await publish_monitor_event(get_redis_client(), "created", monitor)
+        return monitor
+
     async def update_monitor(
         self, owner_id: uuid.UUID, monitor_id: uuid.UUID, monitor_in: MonitorUpdate
     ) -> Monitor:
@@ -59,12 +63,29 @@ class MonitorService:
 
         for field, value in update_data.items():
             setattr(monitor, field, value)
+        monitor.version += 1
 
         await self.db.commit()
         await self.db.refresh(monitor)
+
+        await publish_monitor_event(get_redis_client(), "updated", monitor)
         return monitor
 
     async def delete_monitor(self, owner_id: uuid.UUID, monitor_id: uuid.UUID) -> None:
         monitor = await self.get_monitor(owner_id, monitor_id)
+        monitor.version += 1  # bump before publishing, so the delete event outranks the last update
+
+        await publish_monitor_event(get_redis_client(), "deleted", monitor)
+
         await self.db.delete(monitor)
         await self.db.commit()
+
+    async def update_status(
+        self, monitor_id: uuid.UUID, status: MonitorStatus, checked_at: datetime
+    ) -> None:
+        # No owner filter — called only by the trusted internal consumer process
+        monitor = await self.db.get(Monitor, monitor_id)
+        if monitor is not None:
+            monitor.last_status = status
+            monitor.last_checked_at = checked_at
+            await self.db.commit()

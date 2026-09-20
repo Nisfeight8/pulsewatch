@@ -8,7 +8,8 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str
-
+    db_echo: bool = False
+    
     # Redis
     redis_url: str
 
@@ -27,7 +28,7 @@ class Settings(BaseSettings):
 
     email_verification_token_expire_hours: int = 24
     frontend_url: str = "http://localhost:5173"
-    
+
     # App
     environment: str = "development"
 

@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: pulsewatch
       POSTGRES_DB: pulsewatch
     ports:
-      - "5432:5432" # exposed for local psql/DBeaver access
+      - "5432:5432"
     volumes:
       - pulsewatch_db_data:/var/lib/postgresql/data
     healthcheck:
@@ -20,7 +20,7 @@ services:
     image: redis:8-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379" # exposed so you can redis-cli in locally too
+      - "6379:6379"
     volumes:
       - pulsewatch_redis_data:/data
     healthcheck:
@@ -33,12 +33,80 @@ services:
     image: axllent/mailpit:latest
     restart: unless-stopped
     ports:
-      - "8025:8025" # web UI — βλέπεις τα emails που "στάλθηκαν"
+      - "8025:8025"
       - "1025:1025"
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://pulsewatch:pulsewatch@db:5432/pulsewatch
+      REDIS_URL: redis://redis:6379/0
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      ENVIRONMENT: production
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  consumer:
+    build: ./api
+    restart: unless-stopped
+    command: python -m consumer
+    environment:
+      DATABASE_URL: postgresql+asyncpg://pulsewatch:pulsewatch@db:5432/pulsewatch
+      REDIS_URL: redis://redis:6379/0
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      ENVIRONMENT: production
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   celery_worker:
     build: ./api
+    restart: unless-stopped
     command: celery -A app.core.celery_app worker --loglevel=info
+    environment:
+      DATABASE_URL: postgresql+asyncpg://pulsewatch:pulsewatch@db:5432/pulsewatch
+      REDIS_URL: redis://redis:6379/0
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      ENVIRONMENT: production
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker_scheduler:
+    build: ./worker
+    restart: unless-stopped
+    command: python scheduler_main.py
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker_sync:
+    build: ./worker
+    restart: unless-stopped
+    command: python sync_main.py
+    environment:
+      REDIS_URL: redis://redis:6379/0
     depends_on:
       redis:
         condition: service_healthy

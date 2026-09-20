@@ -1,11 +1,15 @@
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.shared.base_model import Base, TimestampMixin
+
+if TYPE_CHECKING:
+    from api.app.monitor.models import Monitor
 
 
 class Incident(Base, TimestampMixin):
@@ -17,5 +21,5 @@ class Incident(Base, TimestampMixin):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     response_time_ms: Mapped[int | None] = mapped_column(Integer, default=None)
-    
+
     monitor: Mapped["Monitor"] = relationship()

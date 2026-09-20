@@ -6,7 +6,7 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
-engine = create_async_engine(settings.database_url, echo=settings.environment == "development")
+engine = create_async_engine(settings.database_url, echo=settings.db_echo)
 
 async_session = async_sessionmaker(engine, expire_on_commit=False)
 

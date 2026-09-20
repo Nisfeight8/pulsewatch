@@ -1,0 +1,34 @@
+[project]
+name = "pulsewatch-worker"
+version = "0.1.0"
+description = "Checker worker — polls monitored URLs and publishes status-change events"
+readme = "README.md"
+authors = [{ name = "Nisfeight8", email = "fanispapazoglou1999@gmail.com" }]
+requires-python = ">=3.14"
+dependencies = ["httpx>=0.28.1", "pydantic-settings>=2.15.0", "redis>=8.1.0"]
+
+
+[build-system]
+requires = ["uv_build>=0.12.10,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = ["pytest>=9.1.1", "pytest-asyncio>=1.4.0", "ruff>=0.16.7"]
+
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "N"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["worker"]
+
+[tool.ruff.format]
+quote-style = "double"

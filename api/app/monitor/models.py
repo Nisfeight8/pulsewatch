@@ -1,6 +1,7 @@
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -8,8 +9,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.shared.base_model import Base, TimestampMixin
 
+if TYPE_CHECKING:
+    from app.auth.models import User
 
-class MonitorStatus(str, enum.Enum):
+
+class MonitorStatus(enum.StrEnum):
     UP = "up"
     DOWN = "down"
     UNKNOWN = "unknown"
@@ -33,3 +37,4 @@ class Monitor(Base, TimestampMixin):
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
     owner: Mapped["User"] = relationship()
+    version: Mapped[int] = mapped_column(default=1, server_default="1")
