@@ -1,0 +1,40 @@
+repos:
+  # General hygiene — works across the whole repo
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: check-merge-conflict
+
+  # Ruff — lint + format for api/ and worker/ (both use it already)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.7
+    hooks:
+      - id: ruff
+        name: ruff (api)
+        files: ^api/
+        args: ["--fix"]
+      - id: ruff-format
+        name: ruff format (api)
+        files: ^api/
+      - id: ruff
+        name: ruff (worker)
+        files: ^worker/
+        args: ["--fix"]
+      - id: ruff-format
+        name: ruff format (worker)
+        files: ^worker/
+
+  # Frontend — ESLint via a local hook (needs node_modules, so "language: system")
+  - repo: local
+    hooks:
+      - id: eslint-frontend
+        name: eslint (frontend)
+        entry: bash -c 'cd frontend && npx eslint --fix "${@#frontend/}"' --
+        language: system
+        files: ^frontend/src/.*\.(ts|tsx)$
+        pass_filenames: true

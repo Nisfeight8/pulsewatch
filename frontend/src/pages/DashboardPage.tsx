@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   useCreateMonitor,
   useDeleteMonitor,
@@ -10,7 +10,6 @@ import type { MonitorStatus } from "@/types/monitor";
 import { useUrlFilters } from "@/hooks/useUrlFilters";
 
 export default function DashboardPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
   const { getParam, getPage, setFilter, setPage } = useUrlFilters();
   const search = getParam("search");
   const statusFilter = getParam("status") as MonitorStatus | "";
@@ -40,34 +39,6 @@ export default function DashboardPage() {
         },
       },
     );
-  }
-
-  function handleSearchChange(value: string) {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      if (value) next.set("search", value);
-      else next.delete("search");
-      next.set("page", "1"); // reset to page 1 whenever the search term changes
-      return next;
-    });
-  }
-
-  function handleStatusChange(value: MonitorStatus | "") {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      if (value) next.set("status", value);
-      else next.delete("status");
-      next.set("page", "1");
-      return next;
-    });
-  }
-
-  function goToPage(newPage: number) {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set("page", String(newPage));
-      return next;
-    });
   }
 
   return (
@@ -184,7 +155,7 @@ export default function DashboardPage() {
         {data && data.total_pages > 1 && (
           <div className="flex justify-between items-center text-gray-300 text-sm">
             <button
-              onClick={() => goToPage(page - 1)}
+              onClick={() => setPage(page - 1)}
               disabled={!data.has_previous}
               className="px-3 py-1 rounded-lg bg-surface-elevated disabled:opacity-30"
             >
@@ -194,7 +165,7 @@ export default function DashboardPage() {
               Page {data.page} of {data.total_pages}
             </span>
             <button
-              onClick={() => goToPage(page + 1)}
+              onClick={() => setPage(page + 1)}
               disabled={!data.has_next}
               className="px-3 py-1 rounded-lg bg-surface-elevated disabled:opacity-30"
             >

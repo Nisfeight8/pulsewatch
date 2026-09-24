@@ -1,0 +1,16 @@
+{
+  "name": "pulsewatch",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n API,CONSUMER,CELERY,SCHED,SYNC,WEB -c blue,green,yellow,magenta,cyan,white \"npm:dev:api\" \"npm:dev:consumer\" \"npm:dev:celery\" \"npm:dev:scheduler\" \"npm:dev:sync\" \"npm:dev:frontend\"",
+    "dev:api": "cd api && uv run uvicorn app.main:app --reload --port 8000",
+    "dev:consumer": "cd api && uv run python -m consumer",
+    "dev:celery": "cd api && uv run celery -A app.core.celery_app worker --loglevel=info",
+    "dev:scheduler": "cd worker && uv run python scheduler_main.py",
+    "dev:sync": "cd worker && uv run python sync_main.py",
+    "dev:frontend": "cd frontend && npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
