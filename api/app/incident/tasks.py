@@ -1,9 +1,11 @@
 import asyncio
 import uuid
 
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
 from app.auth.models import User
 from app.core.celery_app import celery_app
-from app.core.db import async_session
+from app.core.config import get_settings
 from app.core.email import send_email
 from app.monitor.models import Monitor
 
@@ -15,23 +17,33 @@ def send_downtime_email(monitor_id: str) -> None:
 
 
 async def _send_downtime_email(monitor_id: uuid.UUID) -> None:
-    async with async_session() as db:
-        monitor = await db.get(Monitor, monitor_id)
-        if monitor is None:
-            return
+    # Celery calls asyncio.run() fresh per task — a shared, module-level
+    # engine would keep asyncpg connections bound to a closed event loop
+    # after the first call. Build a short-lived engine per task instead.
+    settings = get_settings()
+    engine = create_async_engine(settings.database_url)
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        owner = await db.get(User, monitor.owner_id)
-        if owner is None:
-            return
+    try:
+        async with session_factory() as db:
+            monitor = await db.get(Monitor, monitor_id)
+            if monitor is None:
+                return
 
-        await send_email(
-            to=owner.email,
-            subject=f"[PulseWatch] {monitor.name} is down",
-            html_body=(
-                f"<p>Your monitor <strong>{monitor.name}</strong> "
-                f"({monitor.url}) appears to be down.</p>"
-            ),
-        )
+            owner = await db.get(User, monitor.owner_id)
+            if owner is None:
+                return
+
+            await send_email(
+                to=owner.email,
+                subject=f"[PulseWatch] {monitor.name} is down",
+                html_body=(
+                    f"<p>Your monitor <strong>{monitor.name}</strong> "
+                    f"({monitor.url}) appears to be down.</p>"
+                ),
+            )
+    finally:
+        await engine.dispose()
 
 
 @celery_app.task(name="incident.send_recovery_email")
@@ -40,20 +52,27 @@ def send_recovery_email(monitor_id: str) -> None:
 
 
 async def _send_recovery_email(monitor_id: uuid.UUID) -> None:
-    async with async_session() as db:
-        monitor = await db.get(Monitor, monitor_id)
-        if monitor is None:
-            return
+    settings = get_settings()
+    engine = create_async_engine(settings.database_url)
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        owner = await db.get(User, monitor.owner_id)
-        if owner is None:
-            return
+    try:
+        async with session_factory() as db:
+            monitor = await db.get(Monitor, monitor_id)
+            if monitor is None:
+                return
 
-        await send_email(
-            to=owner.email,
-            subject=f"[PulseWatch] {monitor.name} is back up",
-            html_body=(
-                f"<p>Good news — your monitor <strong>{monitor.name}</strong> "
-                f"({monitor.url}) is responding again.</p>"
-            ),
-        )
+            owner = await db.get(User, monitor.owner_id)
+            if owner is None:
+                return
+
+            await send_email(
+                to=owner.email,
+                subject=f"[PulseWatch] {monitor.name} is back up",
+                html_body=(
+                    f"<p>Good news — your monitor <strong>{monitor.name}</strong> "
+                    f"({monitor.url}) is responding again.</p>"
+                ),
+            )
+    finally:
+        await engine.dispose()

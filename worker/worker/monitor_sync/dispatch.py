@@ -1,9 +1,19 @@
+import logging
+
 from worker.monitor_sync.parser import InvalidEventError, parse_event
 from worker.state import MonitorSnapshot, MonitorStore
+
+logger = logging.getLogger(__name__)
 
 
 async def apply_event(store: MonitorStore, fields: dict[str, str]) -> None:
     event = parse_event(fields)
+    logger.info(
+        "Received %s event for monitor %s (v%d)",
+        event["action"],
+        event["monitor_id"],
+        event["version"],
+    )
 
     if event["action"] in ("created", "updated"):
         snapshot = MonitorSnapshot(

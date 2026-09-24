@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: oklch(0.55 0.2 250);
+  --color-primary-hover: oklch(0.48 0.2 250);
+  --color-danger: oklch(0.58 0.24 25);
+  --color-success: oklch(0.6 0.18 145);
+
+  --color-surface: oklch(0.16 0.02 260);
+  --color-surface-elevated: oklch(0.2 0.02 260);
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}

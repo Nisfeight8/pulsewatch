@@ -1,4 +1,3 @@
-# app/db_registry.py
 # Central import point so Base.metadata knows about every table.
 # Add one line here whenever a new domain module gets a models.py.
 

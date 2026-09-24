@@ -15,8 +15,6 @@ class InvalidEventError(Exception):
 
 
 def parse_event(fields: dict[str, str]) -> dict:
-    # This shape is the contract with the checker worker — keep both
-    # sides in sync if it ever changes.
     try:
         monitor_id = uuid.UUID(fields["monitor_id"])
         status = MonitorStatus(fields["status"])
@@ -37,6 +35,12 @@ def parse_event(fields: dict[str, str]) -> dict:
 
 async def handle_status_change(fields: dict[str, str]) -> None:
     event = parse_event(fields)
+    logger.info(
+        "Received status_change for monitor %s: %s (response_time=%sms)",
+        event["monitor_id"],
+        event["status"].value,
+        event["response_time_ms"],
+    )
 
     async with async_session() as db:
         monitor_service = MonitorService(db)
@@ -47,6 +51,7 @@ async def handle_status_change(fields: dict[str, str]) -> None:
         )
 
         if event["status"] == MonitorStatus.DOWN:
+            logger.info("Opening incident for monitor %s", event["monitor_id"])
             await incident_service.open_incident(
                 event["monitor_id"], event["checked_at"], event["response_time_ms"]
             )
