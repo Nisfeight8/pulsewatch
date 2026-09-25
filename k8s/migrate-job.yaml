@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: pulsewatch-api:latest
+          imagePullPolicy: IfNotPresent
+          command: ["uv", "run", "alembic", "upgrade", "head"]
+          envFrom:
+            - configMapRef:
+                name: pulsewatch-config
+            - secretRef:
+                name: pulsewatch-secrets

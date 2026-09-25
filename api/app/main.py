@@ -10,6 +10,7 @@ settings = get_settings()
 
 app = FastAPI(title="PulseWatch API")
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_url],
@@ -17,6 +18,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/health")
+async def health() -> dict[str, str]:
+    return {"status": "ok"}
+
 
 app.include_router(auth_router)
 app.include_router(monitor_router)
